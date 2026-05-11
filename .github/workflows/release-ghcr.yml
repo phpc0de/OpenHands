@@ -1,6 +1,9 @@
 name: Release GHCR (amd64)
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
@@ -29,7 +32,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ github.event.inputs.version }}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Invalid version '$VERSION'. Expected x.y.z"
             exit 1
@@ -66,7 +73,7 @@ jobs:
             ghcr.io/${{ steps.owner.outputs.value }}/openhands:${{ steps.version.outputs.value }}
 
       - name: Add latest tag
-        if: ${{ github.event.inputs.push_latest == 'true' }}
+        if: ${{ github.event_name == 'push' || github.event.inputs.push_latest == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
