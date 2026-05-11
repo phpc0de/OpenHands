@@ -1,6 +1,6 @@
-# Reusable workflow: build a multi-arch Docker image and publish a merged manifest.
+# Reusable workflow: build an amd64 Docker image and publish a manifest.
 # Called per image from .github/workflows/ghcr-build.yml.
-name: Build and push multi-arch image
+name: Build and push image
 
 on:
   workflow_call:
@@ -45,14 +45,11 @@ env:
 
 jobs:
   build:
-    name: Build ${{ inputs.image }} (${{ matrix.arch }})
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-22.04' }}
+    name: Build ${{ inputs.image }} (amd64)
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -74,7 +71,7 @@ jobs:
         with:
           image: ${{ inputs.image }}
           ref-name: ${{ env.RELEVANT_REF_NAME }}
-          suffix: -${{ matrix.arch }}
+          suffix: -amd64
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
@@ -83,13 +80,13 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/${{ matrix.arch }}
+          platforms: linux/amd64
           build-args: |
             OPENHANDS_BUILD_VERSION=${{ env.RELEVANT_REF_NAME }}
             ${{ inputs.extra-build-args }}
           cache-from: |
             type=registry,ref=${{ inputs.image }}:buildcache-${{ steps.meta.outputs.version }}
-            type=registry,ref=${{ inputs.image }}:buildcache-main-${{ matrix.arch }}
+            type=registry,ref=${{ inputs.image }}:buildcache-main-amd64
           cache-to: type=registry,ref=${{ inputs.image }}:buildcache-${{ steps.meta.outputs.version }},mode=max
           provenance: ${{ inputs.provenance }}
           sbom: ${{ inputs.sbom }}
@@ -113,4 +110,4 @@ jobs:
         uses: ./.github/actions/docker-merge-manifest
         with:
           base-tags: ${{ steps.meta_base.outputs.tags }}
-          archs: "amd64 arm64"
+          archs: "amd64"
